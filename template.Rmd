@@ -229,7 +229,7 @@ economic_con
 
 Sometimes it is a good idea to visualize summaries and any other result through plots, it can be clearer than summary data sets.
 
-```{r fig.width = 20}
+```{r fig.width = 10}
 title <- c('Total property damage by weather events',
            'Total crop damage by weather events')
 
