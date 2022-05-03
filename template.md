@@ -1,5 +1,6 @@
 ---
 title: "Reproducible Research: Peer Assessment 2"
+author: 'Jose Manuel Coello'
 output: 
   html_document: 
     keep_md: yes
