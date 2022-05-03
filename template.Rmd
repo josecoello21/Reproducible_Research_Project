@@ -9,6 +9,245 @@ output:
 
 ## Synonpsis
 This analysis is intended to explore the database of U.S. National Oceanic and 
-Atmospheric Administrations (NOAA)  from 1950 to 2011 and to see the several damages 
+Atmospheric Administrations (NOAA), this database tracks characteristics of major storms and weather 
+events in the United States from 1950 to 2011, the goal is to see the several damages 
 caused in the health and economic of the United States, this report will show summaries 
-and diferent plots related to fatalities, injuries, property and crop damages
+and different plots related to fatalities, injuries, property and crop damages.
+
+## Libraries
+
+```{r message = FALSE}
+library(data.table)
+library(tidyverse)
+library(lubridate)
+library(cowplot)
+```
+
+## Data Processing
+
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.
+
+This project is being done through the Coursera Test Environment, so the data set has already been downloaded to the working directory.
+
+```{r cache=TRUE}
+# read data
+dt_storm <- fread(file = 'repdata_data_StormData1.csv')
+
+# first six records
+head(dt_storm)
+
+# data dimension
+dim(dt_storm)
+
+```
+
+The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records. More recent years should be considered more complete.
+
+## Results
+
+This analysis aims to try to answer the following questions:
+
+### 1. Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+We began to explore what types of events are most harmful with respect to the health of the population, for this we observe which are the ten events with the highest number of injuries and fatalities.
+
+```{r}
+# summary of top ten events with the most injuries and fatalities
+vars <- c('FATALITIES', 'INJURIES')
+
+lapply(X = vars, 
+       function(x){
+         dt_storm[
+           , lapply(.SD, sum), 
+           .SDcols = x, 
+           by = EVTYPE
+           ][
+             order(-get(x))
+             ][
+               1:10
+             ]
+       }) -> top_health_event
+
+top_health_event
+```
+
+We check which states have the most injuries and fatalities, for this we obtain the top ten of states with the highest number of injuries and fatalities due to weather events.
+
+```{r}
+# top ten states with the most injuries and fatalities due to weather events
+lapply(
+  X = vars, 
+  function(x){
+    tapply(
+      X = dt_storm[, get(x)], 
+      INDEX = dt_storm[, STATE], 
+      FUN = sum
+      ) %>% 
+      sort(decreasing = T) %>% 
+      head(10)
+    }) -> top_health_state
+
+names(top_health_state) <- vars
+
+top_health_state
+```
+
+To finish with the first part of the analysis, let's see the ten states with the highest number of wounded and how many weather events have occurred in these states from 1950 to 2011.
+
+To do this we proceed to obtain the ten states with the highest number of wounded by injuries and fatalities.
+
+```{r}
+# top ten most wounded by injuries and fatalities due to weather events by states
+dt_storm[
+  , lapply(.SD, FUN = sum), 
+  .SDcols = vars, 
+  by = STATE
+  ][
+    , TOTAL_WOUNDED := FATALITIES + INJURIES
+    ][
+      order(-TOTAL_WOUNDED)
+    ][
+      1:10
+    ] -> dt_health_state
+```
+
+We then get the total weather events for each state.
+
+```{r}
+# total events for each state
+dt_storm[ 
+         , .N, 
+         by = .(EVTYPE, STATE)
+         ][
+           , lapply(.SD, sum),
+           .SDcols = 'N',
+           by = STATE
+           ][
+             order(-N)
+             ][
+               , .(STATE, TOTAL_EVENTS = N)
+             ] -> dt_event_state
+```
+
+So we merge both data sets and get the summary of the top ten states with the most wounded and number of events per state.
+
+```{r}
+# summary of the ten states with most wounded and number of events by state
+merge.data.table(
+  x = dt_health_state,
+  y = dt_event_state, 
+  by = 'STATE', 
+  all.x = T,
+  sort = F
+    ) -> dt_sum_state
+dt_sum_state
+```
+
+In the summary table we can see the total number of wounded in absolute values, however to see the percentage of fatalities and injuries over the total number of wounded, a bar plot segmented by relative frequency can be useful.
+
+```{r fig.width = 10}
+melt.data.table(
+  data = dt_sum_state, 
+  id.vars = c('STATE', 'TOTAL_EVENTS', 'TOTAL_WOUNDED'), 
+  variable.name = 'HARMFUL')[
+    , `:=` (STATE = factor(STATE, levels = dt_sum_state$STATE),
+            prop = {tmp <- value / TOTAL_WOUNDED
+                    round(tmp, 3)})
+    ] -> dt_melt
+
+ggplot(data = dt_melt, aes(x = STATE, y = value, fill = HARMFUL)) + 
+  geom_col( position = 'fill' ) + 
+  geom_text( aes(label = scales::percent(prop)), 
+             position = position_fill(vjust = .5) ) + 
+  scale_y_continuous(labels = scales::percent) + 
+  labs(title = 'Prop. Fatalities vs Injuries',
+       subtitle = 'Top ten states with the highest number of wounded', 
+       x = 'States',
+       y = 'Percent')
+```
+
+### 2. Across the United States, which types of events have the greatest economic consequences?
+To try to answer this question, first we proceed to obtain the amounts of expenses caused by weather events.
+
+```{r}
+# levels of interest in the variables PROPDMGEXP and CROPDMGEXP
+pattern <- '[a-zA-Z]'
+
+# function that associates the levels of the variables PROPDMGEXP and CROPDMGEXP
+base <- function(x){
+  ifelse(x == 'B',
+         10**9, 
+         ifelse(x == 'M',
+                10**6, 
+                ifelse(x == 'K',
+                       10**3, 
+                       ifelse(x == 'H',
+                              10**2, 1
+                              )
+                       )
+                )
+         )
+  }
+
+```
+
+We proceed to create the variables `FIGURES_PRO` and `FIGURES_CRO` that contain the expenses caused by weather events to properties and crops.
+
+Next we are going to obtain the top ten of weather events that have caused the most damage in terms of expenses incurred in the property and crops from 1950 to 2011.
+
+
+```{r}
+# creation of variables FIGURES_PRO and FIGURES_CRO
+dt_storm[
+  grepl(pattern = pattern, x = PROPDMGEXP) | grepl(pattern = pattern, x = CROPDMGEXP)
+  ][
+    ,`:=` (FIGURES_PRO = {tmp <- toupper(PROPDMGEXP);
+                          tmp2 <- base(x = tmp);
+                          tmp2 * PROPDMG},
+           FIGURES_CRO = {tmp <- toupper(CROPDMGEXP);
+                          tmp2 <- base(x = tmp2);
+                          tmp2 * CROPDMG}
+           )
+    ] -> dt_storm2
+
+fig_vars <- c('FIGURES_PRO','FIGURES_CRO')
+
+lapply(
+  X = fig_vars,
+  function(x){
+    dt_storm2[
+      , lapply(.SD, sum), by = EVTYPE, .SDcols = x
+      ][
+        order(-get(x))
+        ][
+          1:10
+        ]
+  }) -> economic_con
+
+economic_con
+```
+
+Sometimes it is a good idea to visualize summaries and any other result through plots, it can be clearer than summary data sets.
+
+```{r fig.width = 20}
+title <- c('Total property damage by weather events',
+           'Total crop damage by weather events')
+
+mapply(
+  function(x,y,z){
+    x[, EVTYPE := fct_inorder(EVTYPE)] %>% 
+      ggplot(aes(x = EVTYPE, y = get(y))) + 
+      geom_col() + 
+      scale_y_continuous(labels = scales::dollar) +
+      labs(title = z, x = 'Event types', y = 'Expenses in USD') + 
+      theme(axis.text.x = element_text(angle = 90, size = 7))
+    },
+  economic_con, fig_vars, title, SIMPLIFY = F
+  ) -> plots
+
+names(plots) <- c('p1', 'p2')
+
+plot_grid(plots$p1, plots$p2)
+```
+
+
