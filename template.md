@@ -1,6 +1,7 @@
 ---
 title: "Reproducible Research: Peer Assessment 2"
-author: 'Jose Manuel Coello'
+author: "Jose Manuel Coello"
+date: "2022-05-04"
 output: 
   html_document: 
     keep_md: yes
@@ -374,4 +375,4 @@ plot_grid(plots$p1, plots$p2)
 
 ![plot of chunk unnamed-chunk-11](figure/unnamed-chunk-11-1.png)
 
-
+**Project link on** [github](https://github.com/josecoello21/Reproducible_Research_Project.git)

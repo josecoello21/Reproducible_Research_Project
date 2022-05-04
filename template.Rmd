@@ -1,6 +1,7 @@
 ---
 title: "Reproducible Research: Peer Assessment 2"
-author: 'Jose Manuel Coello'
+author: "Jose Manuel Coello"
+date: "`r Sys.Date()`"
 output: 
   html_document: 
     keep_md: yes
@@ -251,4 +252,4 @@ names(plots) <- c('p1', 'p2')
 plot_grid(plots$p1, plots$p2)
 ```
 
-
+**Project link on** [github](https://github.com/josecoello21/Reproducible_Research_Project.git)
