@@ -1,7 +1,7 @@
 ---
 title: "Reproducible Research: Peer Assessment 2"
 author: "Jose Manuel Coello"
-date: "2022-05-07"
+date: "2022-05-08"
 output: 
   html_document: 
     keep_md: yes
