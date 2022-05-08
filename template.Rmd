@@ -252,4 +252,4 @@ names(plots) <- c('p1', 'p2')
 plot_grid(plots$p1, plots$p2)
 ```
 
-**Project link on** [github](https://github.com/josecoello21/Reproducible_Research_Project.git)
+**Project link on** [github](https://github.com/josecoello21/Reproducible_Research_Project.git)<base target="_top"/>
